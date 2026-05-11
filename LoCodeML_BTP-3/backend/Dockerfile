@@ -18,8 +18,9 @@ EXPOSE 5000
 RUN apt-get update && apt-get install -y libldap-2.5.0
 
 # Install system dependencies for OpenCV
+# `libgl1-mesa-glx` can be unavailable on newer Debian releases; use `libgl1-mesa-dri` instead.
 RUN apt-get update && apt-get install -y \
-    libgl1-mesa-glx \
+    libgl1-mesa-dri \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 

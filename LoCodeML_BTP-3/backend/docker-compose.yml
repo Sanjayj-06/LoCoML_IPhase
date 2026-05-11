@@ -1,4 +1,12 @@
 services:
+  mongo:
+    image: mongo:6.0
+    container_name: mongo
+    volumes:
+      - mongo-data:/data/db
+    ports:
+      - "27017:27017"
+
   redis:
     image: redis:latest
     container_name: redis
@@ -21,6 +29,7 @@ services:
       - KAGGLE_CONFIG_DIR=/root/.kaggle
     depends_on:
       - redis
+      - mongo
 
   master_server:
     build:
@@ -82,3 +91,7 @@ services:
     entrypoint: ["python", "APIs/inferenceMicroservices/pipelineRouter.py"]
     env_file:
       - ./.env
+
+volumes:
+  mongo-data:
+    driver: local

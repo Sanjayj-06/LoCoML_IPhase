@@ -11,7 +11,13 @@ import shutil  # Add this import at the top with other imports
 from huggingface_hub import login
 from dotenv import load_dotenv
 
-login(os.getenv("HUGGINGFACE_TOKEN"))
+load_dotenv()
+hf_token = os.getenv("HUGGINGFACE_TOKEN")
+if hf_token:
+    try:
+        login(hf_token)
+    except Exception as e:
+        print(f"HuggingFace login skipped: {e}")
 
 searchDatasets = Blueprint('searchDatasets', __name__)
 
