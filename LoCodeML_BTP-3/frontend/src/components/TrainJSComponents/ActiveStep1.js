@@ -24,10 +24,12 @@ function ActiveStep1(props) {
     const regressors = ['Random Forest Regressor', 'AdaBoost Regressor', 'Ridge Regression', 'Bayesian Ridge Regression']
     const sentimentClassifier = ['DistilBERT']
     const imageClassifiers = ['CNN','ResNet']
+    const translationModels = ['Helsinki-NLP/Opus-MT-en-de', 'Helsinki-NLP/Opus-MT-en-fr', 'Helsinki-NLP/Opus-MT-en-es', 'Helsinki-NLP/Opus-MT-en-ro']
     const classificationMetrics = ['Accuracy', 'Precision', 'Recall', 'F1 Score', 'AUC']
     const regressionMetrics = ['R2 Score', 'Mean Absolute Error', 'Mean Squared Error', 'Root Mean Squared Error']
     const sentimentMetrics = ['Accuracy', 'Precision', 'Recall', 'F1 Score']
     const imageClassificationMetrics = ['Accuracy', 'Precision', 'Recall', 'F1 Score', 'AUC']
+    const translationMetrics = ['BLEU', 'Rouge', 'Accuracy']
 
     const sendDataToMainPage = () => {
         props.parentCallback({
@@ -142,6 +144,21 @@ function ActiveStep1(props) {
                                             </Select>
                                         </FormControl>
                                     </div> : null}
+                                    {metricMode == "CustomMetric" && objective.toLowerCase() == 'machinetranslation' ? <div>
+                                        <FormControl fullWidth>
+                                            <InputLabel id="label">Select Metric</InputLabel>
+                                            <Select
+                                                labelId="label"
+                                                label="Select Metric"
+                                                fullWidth
+                                                onChange={(e) => setMetricType(e.target.value)}
+                                            >
+                                                {translationMetrics.map((column) => (
+                                                    <MenuItem value={column}>{column}</MenuItem>
+                                                ))}
+                                            </Select>
+                                        </FormControl>
+                                    </div> : null}
                                 </RadioGroup>
                             </FormControl>
                         </Col>
@@ -228,16 +245,31 @@ function ActiveStep1(props) {
                                             </Select>
                                         </FormControl>
                                     </div> : null}
-                                    {trainingMode == "CustomModel" && objective.toLowerCase() == 'imageclassification' ? <div>
+                                    {metricMode == "CustomMetric" && objective.toLowerCase() == 'machinetranslation' ? <div>
                                         <FormControl fullWidth>
-                                            <InputLabel id="label">Select Image Classification Model</InputLabel>
+                                            <InputLabel id="label">Select Metric</InputLabel>
                                             <Select
                                                 labelId="label"
-                                                label="Select Image Classification Model"
+                                                label="Select Metric"
+                                                fullWidth
+                                                onChange={(e) => setMetricType(e.target.value)}
+                                            >
+                                                {translationMetrics.map((column) => (
+                                                    <MenuItem value={column}>{column}</MenuItem>
+                                                ))}
+                                            </Select>
+                                        </FormControl>
+                                    </div> : null}
+                                    {trainingMode == "CustomModel" && objective.toLowerCase() == 'machinetranslation' ? <div>
+                                        <FormControl fullWidth>
+                                            <InputLabel id="label">Select Translation Model</InputLabel>
+                                            <Select
+                                                labelId="label"
+                                                label="Select Translation Model"
                                                 fullWidth
                                                 onChange={(e) => setModelType(e.target.value)}
                                             >
-                                                {imageClassifiers.map((column) => (
+                                                {translationModels.map((column) => (
                                                     <MenuItem value={column}>{column}</MenuItem>
                                                 ))}
                                             </Select>

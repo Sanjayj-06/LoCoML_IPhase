@@ -30,6 +30,10 @@ hasSentIntermediate = True
 
 hasDatasetDetails = False
 
+
+def _error_response(message, status_code=422):
+    return jsonify({"status": "error", "message": message}), status_code
+
 def reset_globals():
     global edgeDetails, datasetDetails, adapterNodeId, intermediate_output, hasSentIntermediate, hasDatasetDetails, preprocessing_tasks
     edgeDetails = []
@@ -79,15 +83,45 @@ def node_info():
 
     predictions = delegate_work()
 
+    if predictions is None:
+        return _error_response(
+            "Pipeline execution failed before producing any output. Check the selected model chain and preprocessing steps."
+        )
+
     if isinstance(predictions, dict) and 'objective' in predictions:
         if predictions['objective'].lower() == 'imageclassification':
             # Return image classification results directly
             return predictions, 200
 
+    if isinstance(predictions, list) and len(predictions) == 0:
+        return _error_response(
+            "Pipeline execution returned no rows. This usually means one of the selected models produced an empty output."
+        )
+
 
     predictions_df = pd.DataFrame(predictions)
+    if predictions_df.empty:
+        return _error_response(
+            "Pipeline execution returned an empty result. Please verify that the output of one model matches the input of the next model."
+        )
+
+    if len(predictions_df.columns) == 0:
+        return _error_response(
+            "Pipeline execution produced data without columns. The model output format is not compatible with the pipeline runner."
+        )
+
+    if len(predictions_df.index) == 0:
+        return _error_response(
+            "Pipeline execution produced no records. Please check the input dataset and the model chain."
+        )
+
     predictions_df.columns = predictions_df.iloc[0]
     predictions_df = predictions_df.drop(predictions_df.index[0])
+
+    if predictions_df.empty:
+        return _error_response(
+            "Pipeline execution completed but no prediction rows were produced after formatting the output."
+        )
 
     if not hasSentIntermediate:
         hasSentIntermediate = True
@@ -102,7 +136,7 @@ def node_info():
 def resume_pipeline():
     global intermediate_output
     if intermediate_output is None:
-        return jsonify({"status": "error", "message": "No intermediate output to resume from"}), 400
+        return _error_response("No intermediate output to resume from. Please run the pipeline again.", 400)
 
     # Optionally, you can get any parameters needed from the request
     # For example, if you need the adapter node ID or any user modifications
@@ -115,6 +149,11 @@ def resume_pipeline():
     print("Intermediate output: ", intermediate_output)
     predictions = run(adapterNodeId, intermediate_output)
 
+    if predictions is None:
+        return _error_response(
+            "Pipeline could not resume from the adapter node. Check the adapter output and downstream model compatibility."
+        )
+
     # print("PREDICTIONS: ", predictions)
 
     # Clear the intermediate output after resuming
@@ -122,8 +161,18 @@ def resume_pipeline():
 
     # Process predictions as before
     predictions_df = pd.DataFrame(predictions)
+    if predictions_df.empty:
+        return _error_response(
+            "Pipeline resume returned no rows. Downstream model may have produced an empty output."
+        )
+
     predictions_df.columns = predictions_df.iloc[0]
     predictions_df = predictions_df.drop(predictions_df.index[0])
+
+    if predictions_df.empty:
+        return _error_response(
+            "Pipeline resume completed but no prediction rows were produced after formatting the output."
+        )
 
     reset_globals()
 
@@ -394,4 +443,4 @@ def callAdapter(dataset):
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5001, debug=True)
+    app.run(host="0.0.0.0", port=5001, debug=False)

@@ -43,4 +43,4 @@ app.register_blueprint(processQuery)
 app.config['REDIS_URL'] = os.getenv('REDIS_URL')
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", debug=True)
+    app.run(host="0.0.0.0", debug=False)

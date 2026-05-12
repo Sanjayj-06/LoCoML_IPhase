@@ -184,7 +184,16 @@ const ChatbotModal = (props) => {
           previous_messages: messages_text,
         })
       })
-      .then(response => response.json())
+      .then(async response => {
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          const detailText = Array.isArray(payload.details) && payload.details.length > 0
+            ? ` Details: ${payload.details.join(' | ')}`
+            : '';
+          throw new Error(`${payload.error || payload.message || 'Pipeline assistant failed'}${detailText}`);
+        }
+        return payload;
+      })
       .then(data => {
         if(data.success){
           const message = data.data;
@@ -223,7 +232,7 @@ const ChatbotModal = (props) => {
         console.error('Error:', error);
         setMessages(prev => [...prev, {
           id: prev.length + 1,
-          text: "Sorry, there was an error communicating with the server.",
+          text: `Sorry, there was an error communicating with the server: ${error.message}`,
           sender: 'bot'
         }]);
       });
@@ -242,20 +251,33 @@ const ChatbotModal = (props) => {
         'Content-Type': 'application/json',
       },
     })
-    .then(response => response.json())
+    .then(async response => {
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const detailText = Array.isArray(payload.details) && payload.details.length > 0
+          ? ` Details: ${payload.details.join(' | ')}`
+          : '';
+        throw new Error(`${payload.error || payload.message || 'Pipeline generation failed'}${detailText}`);
+      }
+      return payload;
+    })
     .then(data => {
       console.log("Inside generate pipeline", data);
       if (data.success && data.data.pipeline) {
         props.onSendMessage(data.data);
         setMessages(prev => [...prev, {
           id: prev.length + 1,
-          text: "I've generated a pipeline based on your request. You can view it in your workspace. Please remember to upload the test dataset before running the pipeline.",          sender: 'bot'
+          text: "I've generated a pipeline based on your request. You can view it in your workspace. Please remember to upload the test dataset before running the pipeline.",
+          sender: 'bot'
         }]);
       } else {
+        const detailText = Array.isArray(data.details) && data.details.length > 0
+          ? ` Details: ${data.details.join(' | ')}`
+          : '';
         // Handle error
         setMessages(prev => [...prev, {
           id: prev.length + 1,
-          text: `Sorry, I couldn't generate the pipeline: ${data.error}`,
+          text: `Sorry, I couldn't generate the pipeline: ${data.error || 'Unknown error'}${detailText}`,
           sender: 'bot'
         }]);
       }
@@ -264,7 +286,7 @@ const ChatbotModal = (props) => {
       console.error('Error:', error);
       setMessages(prev => [...prev, {
         id: prev.length + 1,
-        text: "Sorry, there was an error communicating with the server.",
+        text: `Sorry, there was an error communicating with the server: ${error.message}`,
         sender: 'bot'
       }]);
     });

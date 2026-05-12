@@ -260,6 +260,30 @@ def inference_batch():
                     new_prediction.append(predicted_label)
 
         # print("Predicted labels:", predictions)
+    elif objective == "machinetranslation":
+        # Machine translation using saved model metadata
+        try:
+            translator = pipeline("translation", model=model_info['estimator_type'], device='cpu' if not torch.cuda.is_available() else 0)
+            
+            # Get the text column from input
+            text_column = list(user_input.columns)[0]
+            texts = user_input[text_column].tolist()
+            
+            new_prediction = []
+            for text in texts:
+                if isinstance(text, str) and len(text.strip()) > 0:
+                    try:
+                        result = translator(text, max_length=512)
+                        new_prediction.append(result[0]['translation_text'])
+                    except Exception as e:
+                        print(f"Translation error: {str(e)}", file=sys.stderr)
+                        new_prediction.append("")
+                else:
+                    new_prediction.append("")
+                    
+        except Exception as e:
+            print(f"Machine translation pipeline error: {str(e)}", file=sys.stderr)
+            new_prediction = [""] * len(user_input)
     else:
         new_prediction = model.predict(user_input)
 
@@ -333,4 +357,4 @@ def preprocess_image(img, preprocessing_tasks):
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5004, debug=True)
+    app.run(host="0.0.0.0", port=5004, debug=False)

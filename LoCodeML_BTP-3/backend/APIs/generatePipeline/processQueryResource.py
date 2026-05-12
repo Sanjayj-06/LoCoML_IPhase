@@ -5,6 +5,7 @@ sys.path.append(os.getenv('PROJECT_PATH'))
 from functions.LLM_API import LLM
 from mongoDB import db
 import re
+import datetime
 from APIs.generatePipeline.pipelineParameters import PipelineParameters
 
 prompt_file_path = os.path.join(os.path.dirname(__file__), "process_query_SP.txt")
@@ -33,10 +34,12 @@ class ProcessQuery:
             # print(f"[DEBUG] LLM response: {llm_response}", file=sys.stderr)
             
             result = self.parse_response(llm_response)
+            if result is None:
+                return False, "The pipeline assistant could not parse the model response. Please try again."
             return result
         except Exception as e:
             print(f"[DEBUG] Error in process_query: {e}", file=sys.stderr)
-            return None
+            return False, f"Pipeline assistant unavailable: {str(e)}"
     
     def get_trained_datasets(self):
         try:
@@ -58,6 +61,17 @@ class ProcessQuery:
             print(f"[DEBUG] Error in get_trained_datasets: {e}", file=sys.stderr)
             self.dataset_name_to_id = {}
             return []
+
+    def _save_pipeline_context(self, save_data):
+        try:
+            collection = db["Pipeline_Requests"]
+            document = dict(save_data)
+            document["updated_at"] = datetime.datetime.utcnow()
+            collection.insert_one(document)
+            return True
+        except Exception as e:
+            print(f"[DEBUG] Error saving pipeline context to DB: {e}", file=sys.stderr)
+            return False
     
     def prepare_prompt(self, available_datasets):
         try:
@@ -130,11 +144,10 @@ class ProcessQuery:
                         if dataset_name in self.dataset_name_to_id:
                             dataset_ids = self.dataset_name_to_id[dataset_name]
                 save_data['dataset_ids'] = dataset_ids
-                # Save to file (overwrite each time)
-                save_path = os.path.join(os.path.dirname(__file__), "pipeline_params.json")
-                with open(save_path, "w") as f:
-                    json.dump(save_data, f, indent=2)
-                # --- End save to file ---
+                save_data['got_required_params'] = True
+                save_data['user_prompt'] = self.user_prompt
+                save_data['previous_messages'] = self.previous_messages
+                self._save_pipeline_context(save_data)
                 return True, required_params.__dict__
             else:
                 clarification = response_data.get('clarifying_question')
@@ -142,10 +155,11 @@ class ProcessQuery:
                 save_data = {
                     "user_prompt": self.user_prompt,
                     "clarifying_question": clarification,
+                    "got_required_params": False,
+                    "dataset_ids": [],
+                    "updated_at": datetime.datetime.utcnow(),
                 }
-                save_path = os.path.join(os.path.dirname(__file__), "pipeline_params.json")
-                with open(save_path, "w") as f:
-                    json.dump(save_data, f, indent=2)
+                self._save_pipeline_context(save_data)
                 return False, clarification
         except json.JSONDecodeError as e:
             print(f"[DEBUG] Error parsing JSON: {e}", file=sys.stderr)

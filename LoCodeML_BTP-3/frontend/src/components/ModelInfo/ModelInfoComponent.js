@@ -86,7 +86,28 @@ function ModelInfoComponent(props) {
         tempModelDetails = props.modelDetails;
     }
 
-    const modelDetails = JSON.parse(tempModelDetails.replace(/Infinity/g, "1e1000"));
+    const parsedModelDetails = JSON.parse(tempModelDetails.replace(/Infinity/g, "1e1000"));
+    const modelDetails = {
+        parameters: [],
+        evaluation_metrics: [],
+        all_models_results: [],
+        versions: [],
+        graph_data: {},
+        output_mapping: {},
+        objective: '',
+        training_mode: '',
+        ...parsedModelDetails,
+    };
+    modelDetails.parameters = Array.isArray(modelDetails.parameters) ? modelDetails.parameters : [];
+    modelDetails.evaluation_metrics = Array.isArray(modelDetails.evaluation_metrics) ? modelDetails.evaluation_metrics : [];
+    modelDetails.all_models_results = Array.isArray(modelDetails.all_models_results) ? modelDetails.all_models_results : [];
+    modelDetails.versions = Array.isArray(modelDetails.versions) ? modelDetails.versions : [];
+    modelDetails.graph_data = modelDetails.graph_data && typeof modelDetails.graph_data === 'object' ? modelDetails.graph_data : {};
+    modelDetails.output_mapping = modelDetails.output_mapping && typeof modelDetails.output_mapping === 'object' ? modelDetails.output_mapping : {};
+    modelDetails.objective = typeof modelDetails.objective === 'string' ? modelDetails.objective : '';
+    modelDetails.training_mode = typeof modelDetails.training_mode === 'string' ? modelDetails.training_mode : '';
+    const objectiveLower = (modelDetails.objective || '').toLowerCase();
+    const trainingModeLower = (modelDetails.training_mode || '').toLowerCase();
     const [value, setValue] = React.useState(0);
     const [checkBoxStates, setCheckBoxStates] = React.useState(modelDetails.versions.map((version) => false));
     const [twoCheckBoxSelected, setTwoCheckBoxSelected] = React.useState(false);
@@ -240,15 +261,14 @@ function ModelInfoComponent(props) {
                                 </tr>
                             </thead>
                             <TableBody>
-                                {modelDetails.parameters.map((parameter, index) => {
+                                {Array.isArray(modelDetails.parameters) ? modelDetails.parameters.map((parameter, index) => {
                                     return (
                                         <tr hover size='small' key={index}>
                                             <td>{parameter.parameter_name}</td>
                                             <td>{parameter.parameter_value}</td>
                                         </tr>
                                     );
-                                }
-                                )}
+                                }) : null}
                             </TableBody>
                         </ReactStrapTable>
                     </CustomTabPanel>
@@ -262,98 +282,142 @@ function ModelInfoComponent(props) {
                             </thead>
                             <tbody>
                                 {modelDetails.evaluation_metrics.map((metric, index) => {
-
                                     if (metric.metric_name != 'classifier') {
                                         return (
                                             <tr key={index}>
                                                 <td>{metric.metric_name}</td>
                                                 <td>{metric.metric_value}</td>
-                                            </tr>)
+                                            </tr>
+                                        );
                                     }
-                                    else {
-                                        return null;
-                                    }
-                                    ;
+                                    return null;
                                 })}
                             </tbody>
                         </ReactStrapTable>
                     </CustomTabPanel>
                     <CustomTabPanel value={value} index={1}>
-                        {
-                            modelDetails.objective.toLowerCase() === 'classification' ? (
-                                <>
+                        {objectiveLower === 'classification' ? (
+                            <>
+                                <Row>
+                                    <Col md="6">
+                                        <ConfusionMatrix cm={modelDetails.graph_data.confusion_matrix} output_mapping={modelDetails.output_mapping} />
+                                    </Col>
+                                    <Col md="6">
+                                        <FeatureImportance fi={modelDetails.graph_data.feature_importance} />
+                                    </Col>
+                                </Row>
+                                <Row>
+                                    <Col md="6">
+                                        <PrecisionRecall pr_data={modelDetails.graph_data.precision_recall_data} />
+                                    </Col>
+                                    <Col md="6">
+                                        <RocCurve auc_data={modelDetails.graph_data.auc_data} />
+                                    </Col>
+                                </Row>
+                            </>
+                        ) : objectiveLower === 'sentiment' ? (
+                            <>
+                                <Row>
+                                    <Col md="6">
+                                        <ConfusionMatrix cm={modelDetails.graph_data.confusion_matrix} output_mapping={modelDetails.output_mapping} />
+                                    </Col>
+                                </Row>
+                            </>
+                        ) : objectiveLower === 'machinetranslation' ? (
+                            <>
+                                <Row>
+                                    <Col md="12">
+                                        <Typography variant="h6" gutterBottom>
+                                            Machine Translation Summary
+                                        </Typography>
+                                    </Col>
+                                </Row>
+                                <Row style={{ marginBottom: '1rem' }}>
+                                    <Col md="12">
+                                        <ReactStrapTable striped>
+                                            <thead>
+                                                <tr>
+                                                    <th>Metric</th>
+                                                    <th>Value</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {modelDetails.evaluation_metrics.map((metric, index) => (
+                                                    <tr key={index}>
+                                                        <td>{metric.metric_name}</td>
+                                                        <td>{metric.metric_value}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </ReactStrapTable>
+                                    </Col>
+                                </Row>
+                                {Array.isArray(modelDetails.graph_data.sample_predictions) && modelDetails.graph_data.sample_predictions.length > 0 ? (
                                     <Row>
-                                        <Col md="6">
-                                            <ConfusionMatrix cm={modelDetails.graph_data.confusion_matrix} output_mapping={modelDetails.output_mapping} />
-                                        </Col>
-                                        <Col md="6">
-                                            <FeatureImportance fi={modelDetails.graph_data.feature_importance} />
-                                        </Col>
-                                    </Row>
-                                    <Row>
-                                        <Col md="6">
-                                            <PrecisionRecall pr_data={modelDetails.graph_data.precision_recall_data} />
-                                        </Col>
-                                        <Col md="6">
-                                            <RocCurve auc_data={modelDetails.graph_data.auc_data} />
-                                        </Col>
-                                    </Row>
-                                </>
-                            ) : modelDetails.objective.toLowerCase() === 'sentiment' ? (
-                                <>
-                                    <Row>
-                                        <Col md="6">
-                                            <ConfusionMatrix cm={modelDetails.graph_data.confusion_matrix} output_mapping={modelDetails.output_mapping} />
-                                        </Col>
-                                    </Row>
-                                </>
-                            ) : modelDetails.objective.toLowerCase() === 'imageclassification' ? (
-                                <>
-                                {console.log(modelDetails.graph_data)}
-                                    <Row>
-                                        {/* <Col md="6">
-                                            <ConfusionMatrix cm={modelDetails.graph_data.confusion_matrix} output_mapping={modelDetails.output_mapping} />
-                                        </Col> */}
                                         <Col md="12">
-                                            <ClassDistribution distribution_data={modelDetails.graph_data.class_distribution} />
+                                            <ReactStrapTable striped>
+                                                <thead>
+                                                    <tr>
+                                                        <th>Input</th>
+                                                        <th>Model</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {modelDetails.graph_data.sample_predictions.map((sample, index) => (
+                                                        <tr key={index}>
+                                                            <td>{sample.input}</td>
+                                                            <td>{sample.model}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </ReactStrapTable>
                                         </Col>
                                     </Row>
-                                    <Row>
-                                        <Col md="12">
-                                            <SamplePredictions predictions_data={modelDetails.graph_data.sample_predictions} />
-                                        </Col>
-                                    </Row>
-                                    <Row>
-                                        <Col md="12">
-                                            <TrainingHistory history_data={modelDetails.graph_data.training_history} />
-                                        </Col>
-                                    </Row>
-                                </>
-                            ) : (
-                                <>
-                                    <Row style={{ marginBottom: '1.5rem' }}>
-                                        <Col md="6">
-                                            <FeatureImportance fi={modelDetails.graph_data.feature_importance} />
-                                        </Col>
-                                        <Col md="6">
-                                            <ScatterPlot scatter_plot_data={modelDetails.graph_data.scatter_plot_data} />
-                                        </Col>
-                                    </Row>
-                                    <Row justify-content="center">
-                                        <Col>
-                                            <ResidualPlot residual_plot_data={modelDetails.graph_data.residual_plot_data} />
-                                        </Col>
-                                    </Row>
-                                </>
-                            )
-                        }
+                                ) : (
+                                    <Typography>No sample predictions available.</Typography>
+                                )}
+                            </>
+                        ) : objectiveLower === 'imageclassification' ? (
+                            <>
+                                <Row>
+                                    <Col md="12">
+                                        <ClassDistribution distribution_data={modelDetails.graph_data.class_distribution} />
+                                    </Col>
+                                </Row>
+                                <Row>
+                                    <Col md="12">
+                                        <SamplePredictions predictions_data={modelDetails.graph_data.sample_predictions} />
+                                    </Col>
+                                </Row>
+                                <Row>
+                                    <Col md="12">
+                                        <TrainingHistory history_data={modelDetails.graph_data.training_history} />
+                                    </Col>
+                                </Row>
+                            </>
+                        ) : (
+                            <>
+                                <Row style={{ marginBottom: '1.5rem' }}>
+                                    <Col md="6">
+                                        <FeatureImportance fi={modelDetails.graph_data.feature_importance} />
+                                    </Col>
+                                    <Col md="6">
+                                        <ScatterPlot scatter_plot_data={modelDetails.graph_data.scatter_plot_data} />
+                                    </Col>
+                                </Row>
+                                <Row>
+                                    <Col>
+                                        <ResidualPlot residual_plot_data={modelDetails.graph_data.residual_plot_data} />
+                                    </Col>
+                                </Row>
+                            </>
+                        )}
                     </CustomTabPanel>
                     <CustomTabPanel value={value} index={3}>
-                        {modelDetails.training_mode.toLowerCase() == 'automl' && <ReactStrapTable striped>
+                        {trainingModeLower == 'automl' && modelDetails.all_models_results.length > 0 ? <ReactStrapTable striped>
                             <thead>
                                 <tr>
                                     {
-
                                         Object.keys(modelDetails.all_models_results[0])
                                             .map((metric) => {
                                                 return (
@@ -382,9 +446,9 @@ function ModelInfoComponent(props) {
                                     </tr>
                                 ))}
                             </tbody>
-                        </ReactStrapTable>}
+                        </ReactStrapTable> : trainingModeLower == 'automl' ? <Typography>No AutoML sweep results were returned for this model.</Typography> : null}
                         {
-                            modelDetails.training_mode.toLowerCase() == 'custom' && <>
+                            trainingModeLower == 'custom' && <>
                                 <Typography>
                                     This model was not trained on AutoML mode.
                                 </Typography>
@@ -399,8 +463,8 @@ function ModelInfoComponent(props) {
                                     : null
                             }
                         </Typography>
-                        {!compareView &&
-                            <ReactStrapTable striped >
+                        {!compareView ? (
+                            <ReactStrapTable striped>
                                 <thead>
                                     <tr>
                                         <th></th>
@@ -414,154 +478,128 @@ function ModelInfoComponent(props) {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {
-
-                                        modelDetails.versions.length == 0 ?
-                                            <>There are no versions of this model.</>
-                                            :
-                                            <>
-                                                {modelDetails.versions.map((version, index) => {
-
-                                                    return (
-                                                        <>
-
-                                                            <tr>
-
-                                                                <td>
-                                                                    {console.log(checkBoxStates[index])}
-                                                                    <Checkbox
-                                                                        checked={checkBoxStates[index]}
-                                                                        inputProps={{ 'aria-label': 'controlled' }}
-                                                                        onChange={() => {
-                                                                            var temp = [...checkBoxStates]
-                                                                            temp[index] = !temp[index]
-                                                                            setCheckBoxStates([...temp])
-                                                                        }} />
-                                                                </td>
-                                                                <td>{version.model_id}</td>
-                                                                <td>{getDateFromTimestamp(version.time) + ' ' + getTimeIn12Hours(version.time)}</td>
-                                                                <td>{version.estimator_type}</td>
-                                                                <td>{modelDetails.metric_type}</td>
-                                                                <td>{getMetricValue(version.evaluation_metrics, modelDetails.metric_type)}</td>
-                                                                <td>{version.version_number}</td>
-                                                                <td><Button onClick={() => { toggleRow(index) }} > {openRows[index] ? 'Show Less Details' : 'Show More Details'}</Button> </td>
-                                                            </tr>
-                                                            <tr>
-                                                                <td colSpan={7}>
-                                                                    <Collapse isOpen={openRows[index]} style={{ width: '100%' }}>
-                                                                        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-                                                                            <Tabs value={valueVersion} onChange={handleChangeVersion} aria-label="basic tabs example">
-                                                                                <Tab label="Metrics" {...a11yProps(0)} />
-                                                                                <Tab label="Visualizations" {...a11yProps(1)} />
-                                                                                <Tab label="Parameters" {...a11yProps(2)} />
-                                                                            </Tabs>
-                                                                        </Box>
-                                                                        <CustomTabPanel value={valueVersion} index={0}>
-                                                                            <ReactStrapTable striped>
-                                                                                <thead>
-                                                                                    <tr>
-                                                                                        <th>Metric</th>
-                                                                                        <th>Value</th>
-                                                                                    </tr>
-                                                                                </thead>
-                                                                                <tbody>
-                                                                                    {version.evaluation_metrics.map((metric, index) => {
-
-                                                                                        if (metric.metric_name != 'classifier') {
-                                                                                            return (
-                                                                                                <tr key={index}>
-                                                                                                    <td>{metric.metric_name}</td>
-                                                                                                    <td>{metric.metric_value}</td>
-                                                                                                </tr>)
-                                                                                        }
-                                                                                        else {
-                                                                                            return null;
-                                                                                        }
-                                                                                        ;
-                                                                                    })}
-                                                                                </tbody>
-                                                                            </ReactStrapTable>
-                                                                        </CustomTabPanel>
-                                                                        <CustomTabPanel value={valueVersion} index={1}>
-                                                                            {
-                                                                                modelDetails.objective.toLowerCase() == 'classification' ?
-                                                                                    <>
-                                                                                        <Row
-                                                                                        >
-                                                                                            <Col md="6">
-                                                                                                <ConfusionMatrix cm={version.graph_data.confusion_matrix} output_mapping={version.output_mapping} />
-                                                                                            </Col>
-                                                                                            <Col md="6">
-                                                                                                <FeatureImportance fi={version.graph_data.feature_importance} />
-                                                                                            </Col>
-                                                                                        </Row>
-                                                                                        <Row>
-                                                                                            <Col md="6">
-                                                                                                <PrecisionRecall pr_data={version.graph_data.precision_recall_data} />
-                                                                                            </Col>
-
-                                                                                            <Col md="6">
-                                                                                                <RocCurve auc_data={version.graph_data.auc_data} />
-                                                                                            </Col>
-                                                                                        </Row>
-                                                                                    </>
-                                                                                    :
-                                                                                    <>
-                                                                                        <Row
-                                                                                            style={{
-                                                                                                marginBottom: '1.5rem'
-                                                                                            }}
-                                                                                        >
-                                                                                            <Col md="6">
-                                                                                                <FeatureImportance fi={version.graph_data.feature_importance} />
-                                                                                            </Col>
-                                                                                            <Col md="6">
-                                                                                                <ScatterPlot scatter_plot_data={version.graph_data.scatter_plot_data} />
-                                                                                            </Col>
-                                                                                        </Row>
-                                                                                        <Row
-                                                                                            justify-content="center"
-                                                                                        >
-                                                                                            <Col>
-                                                                                                <ResidualPlot residual_plot_data={version.graph_data.residual_plot_data} />
-                                                                                            </Col>
-                                                                                        </Row>
-                                                                                    </>
-                                                                            }
-
-                                                                        </CustomTabPanel>
-                                                                        <CustomTabPanel value={valueVersion} index={2}>
-                                                                            <ReactStrapTable striped>
-                                                                                <thead>
-                                                                                    <tr>
-                                                                                        <th>Parameter</th>
-                                                                                        <th>Value</th>
-                                                                                    </tr>
-                                                                                </thead>
-                                                                                <TableBody>
-                                                                                    {version.parameters.map((parameter, index) => {
-                                                                                        return (
-                                                                                            <tr hover size='small' key={index}>
-                                                                                                <td>{parameter.parameter_name}</td>
-                                                                                                <td>{parameter.parameter_value}</td>
-                                                                                            </tr>
-                                                                                        );
-                                                                                    }
-                                                                                    )}
-                                                                                </TableBody>
-                                                                            </ReactStrapTable>
-                                                                        </CustomTabPanel>
-
-                                                                    </Collapse>
-                                                                </td>
-                                                            </tr>
-                                                        </>
-                                                    )
-                                                })}
-                                            </>
-                                    }
+                                    {modelDetails.versions.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={8}>There are no versions of this model.</td>
+                                        </tr>
+                                    ) : (
+                                        modelDetails.versions.map((version, index) => (
+                                            <React.Fragment key={version.model_id || index}>
+                                                <tr>
+                                                    <td>
+                                                        <Checkbox
+                                                            checked={checkBoxStates[index]}
+                                                            inputProps={{ 'aria-label': 'controlled' }}
+                                                            onChange={() => {
+                                                                var temp = [...checkBoxStates]
+                                                                temp[index] = !temp[index]
+                                                                setCheckBoxStates([...temp])
+                                                            }}
+                                                        />
+                                                    </td>
+                                                    <td>{version.model_id}</td>
+                                                    <td>{getDateFromTimestamp(version.time) + ' ' + getTimeIn12Hours(version.time)}</td>
+                                                    <td>{version.estimator_type}</td>
+                                                    <td>{modelDetails.metric_type}</td>
+                                                    <td>{getMetricValue(version.evaluation_metrics, modelDetails.metric_type)}</td>
+                                                    <td>{version.version_number}</td>
+                                                    <td><Button onClick={() => { toggleRow(index) }} > {openRows[index] ? 'Show Less Details' : 'Show More Details'}</Button></td>
+                                                </tr>
+                                                <tr>
+                                                    <td colSpan={8}>
+                                                        <Collapse isOpen={openRows[index]} style={{ width: '100%' }}>
+                                                            <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+                                                                <Tabs value={valueVersion} onChange={handleChangeVersion} aria-label="basic tabs example">
+                                                                    <Tab label="Metrics" {...a11yProps(0)} />
+                                                                    <Tab label="Visualizations" {...a11yProps(1)} />
+                                                                    <Tab label="Parameters" {...a11yProps(2)} />
+                                                                </Tabs>
+                                                            </Box>
+                                                            <CustomTabPanel value={valueVersion} index={0}>
+                                                                <ReactStrapTable striped>
+                                                                    <thead>
+                                                                        <tr>
+                                                                            <th>Metric</th>
+                                                                            <th>Value</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        {version.evaluation_metrics.map((metric, metricIndex) => (
+                                                                            metric.metric_name != 'classifier' ? (
+                                                                                <tr key={metricIndex}>
+                                                                                    <td>{metric.metric_name}</td>
+                                                                                    <td>{metric.metric_value}</td>
+                                                                                </tr>
+                                                                            ) : null
+                                                                        ))}
+                                                                    </tbody>
+                                                                </ReactStrapTable>
+                                                            </CustomTabPanel>
+                                                            <CustomTabPanel value={valueVersion} index={1}>
+                                                                {objectiveLower === 'classification' ? (
+                                                                    <>
+                                                                        <Row>
+                                                                            <Col md="6">
+                                                                                <ConfusionMatrix cm={version.graph_data.confusion_matrix} output_mapping={version.output_mapping} />
+                                                                            </Col>
+                                                                            <Col md="6">
+                                                                                <FeatureImportance fi={version.graph_data.feature_importance} />
+                                                                            </Col>
+                                                                        </Row>
+                                                                        <Row>
+                                                                            <Col md="6">
+                                                                                <PrecisionRecall pr_data={version.graph_data.precision_recall_data} />
+                                                                            </Col>
+                                                                            <Col md="6">
+                                                                                <RocCurve auc_data={version.graph_data.auc_data} />
+                                                                            </Col>
+                                                                        </Row>
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <Row style={{ marginBottom: '1.5rem' }}>
+                                                                            <Col md="6">
+                                                                                <FeatureImportance fi={version.graph_data.feature_importance} />
+                                                                            </Col>
+                                                                            <Col md="6">
+                                                                                <ScatterPlot scatter_plot_data={version.graph_data.scatter_plot_data} />
+                                                                            </Col>
+                                                                        </Row>
+                                                                        <Row>
+                                                                            <Col>
+                                                                                <ResidualPlot residual_plot_data={version.graph_data.residual_plot_data} />
+                                                                            </Col>
+                                                                        </Row>
+                                                                    </>
+                                                                )}
+                                                            </CustomTabPanel>
+                                                            <CustomTabPanel value={valueVersion} index={2}>
+                                                                <ReactStrapTable striped>
+                                                                    <thead>
+                                                                        <tr>
+                                                                            <th>Parameter</th>
+                                                                            <th>Value</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <TableBody>
+                                                                        {(Array.isArray(version.parameters) ? version.parameters : []).map((parameter, parameterIndex) => (
+                                                                            <tr hover size='small' key={parameterIndex}>
+                                                                                <td>{parameter.parameter_name}</td>
+                                                                                <td>{parameter.parameter_value}</td>
+                                                                            </tr>
+                                                                        ))}
+                                                                    </TableBody>
+                                                                </ReactStrapTable>
+                                                            </CustomTabPanel>
+                                                        </Collapse>
+                                                    </td>
+                                                </tr>
+                                            </React.Fragment>
+                                        ))
+                                    )}
                                 </tbody>
-                            </ReactStrapTable>}
+                            </ReactStrapTable>
+                        ) : null}
                         {
                             compareView && selectedForCompare.length == 2 &&
                             <>
@@ -589,7 +627,7 @@ function ModelInfoComponent(props) {
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {modelDetails.versions[selectedForCompare[0]].evaluation_metrics.map((metric, index) => {
+                                                    {(Array.isArray(modelDetails.versions[selectedForCompare[0]]?.evaluation_metrics) ? modelDetails.versions[selectedForCompare[0]].evaluation_metrics : []).map((metric, index) => {
 
                                                         if (metric.metric_name != 'classifier') {
                                                             return (
@@ -655,7 +693,7 @@ function ModelInfoComponent(props) {
                                         </CustomTabPanel>
                                         <CustomTabPanel value={compareTab} index={2}>
                                             {
-                                                modelDetails.objective.toLowerCase() == 'classification' ?
+                                                                                objectiveLower == 'classification' ?
                                                     <>
                                                         <Row>
                                                             <Col md="6">

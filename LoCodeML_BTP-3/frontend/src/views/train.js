@@ -200,6 +200,8 @@ function Train() {
         sklearnModelName = classifierMap.forward_map[modelType];
       } else if (objective.toLowerCase() == "sentiment") {
         sklearnModelName = sentimentMap.forward_map[modelType];
+      } else if (objective.toLowerCase() == "machinetranslation") {
+        sklearnModelName = modelType; // For Machine Translation, use modelType directly
       } else if (objective.toLowerCase() == "imageclassification") {
         sklearnModelName = modelType; // For CNN, use the modelType directly
       } else {

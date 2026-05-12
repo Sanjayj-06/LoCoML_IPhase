@@ -9,8 +9,8 @@ def LLM(model="deepseek-ai/DeepSeek-V3-0324", system_prompt=None, user_prompt=No
     print("[DEBUG] Preparing LLM API request...", file=sys.stderr)
     API_KEY = HYPERBOLIC_API_KEY
     if not API_KEY:
-        print("[ERROR] API Key is not set. Please set the HYPERRBOLIC_API_KEY environment variable.", file=sys.stderr)
-        raise ValueError("API Key is not set.")
+        print("[ERROR] API Key is not set. Please set the HYPERBOLIC_API_KEY environment variable.", file=sys.stderr)
+        raise RuntimeError("HYPERBOLIC_API_KEY is not set. Add it to backend/.env to use the pipeline assistant.")
     if not system_prompt or not user_prompt:    
         print("[ERROR] System prompt or user prompt is missing.", file=sys.stderr)
         raise ValueError("System prompt or user prompt is missing.")

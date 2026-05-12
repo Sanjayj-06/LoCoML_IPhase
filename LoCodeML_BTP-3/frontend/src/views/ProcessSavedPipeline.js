@@ -97,19 +97,25 @@ function ProcessSavedPipeline() {
         setIsRunning(true);
 
         const callMaster = async () => {
-            await axios.post(process.env.REACT_APP_RUN_INFERENCE_PIPELINE, {
-                nodes: nodes,
-                edges: edges
-            })
-                .then((response) => {
-                    console.log("Received response: ", typeof (response.data));
+            try {
+                const response = await axios.post(process.env.REACT_APP_RUN_INFERENCE_PIPELINE, {
+                    nodes: nodes,
+                    edges: edges
+                });
+
+                console.log("Received response: ", typeof (response.data));
+
+                if (response.status === 200) {
                     setCsvData(response.data);
                     setOpen(true);
-                    setIsRunning(false);
-                })
-                .catch((error) => {
-                    console.log(error);
-                });
+                }
+            } catch (error) {
+                const backendMessage = error?.response?.data?.message || error?.response?.data?.error || error.message;
+                console.log(error);
+                window.alert(`Pipeline run failed: ${backendMessage}`);
+            } finally {
+                setIsRunning(false);
+            }
         };
 
         await callMaster();

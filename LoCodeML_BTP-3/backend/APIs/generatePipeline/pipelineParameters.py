@@ -9,8 +9,8 @@ class PipelineParameters:
     
     def get_all_params(self):
         return [
-            'dataset__name',
-            'dataset__type',
+            'dataset_name',
+            'dataset_type',
             'preprocessing_steps',
             'task',
             'model_type',
@@ -18,4 +18,4 @@ class PipelineParameters:
         ]
     
     def get_must_required_params(self):
-        return ['dataset__name']
+        return ['dataset_name', 'dataset_type', 'task', 'model_type']

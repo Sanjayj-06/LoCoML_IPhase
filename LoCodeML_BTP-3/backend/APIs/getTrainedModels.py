@@ -93,6 +93,20 @@ def getTrainedModelListImageClassification():
 
     return json_util.dumps({"trained_models": trained_model_list})
 
+@getTrainedModels.route("/getTrainedModels/machinetranslation", methods=["GET"])
+def getTrainedModelListMachineTranslation():
+    collection = db["Model_zoo"]
+    trained_model_list = []
+
+    query = {"objective": "machineTranslation"}
+    results = collection.find(query)
+
+    for model in results:
+        model.pop("_id")
+        trained_model_list.append(json_util.dumps(model))
+
+    return json_util.dumps({"trained_models": trained_model_list})
+
 @getTrainedModels.route("/getTrainedModels/<model_id>", methods=["GET"])
 def getTrainedModel(model_id):
     # get model_id from endpoint

@@ -29,7 +29,16 @@ def process_query_helper():
         print(f"[DEBUG] Previous messages: {previous_messges}", file=sys.stderr)
 
         process_query_instance = ProcessQuery(user_prompt, previous_messges)
-        got_required_params, response = process_query_instance.process_query()
+        result = process_query_instance.process_query()
+
+        if not result:
+            print("[DEBUG] Query processing returned no result", file=sys.stderr)
+            return jsonify({
+                "success": False,
+                "error": "Pipeline assistant returned no response. Please verify HYPERBOLIC_API_KEY and try again."
+            }), 503
+
+        got_required_params, response = result
         # Prepare response
         if response:
             print("[DEBUG] Query processed successfully", file=sys.stderr)
@@ -48,5 +57,5 @@ def process_query_helper():
         print(f"[DEBUG] Unexpected error: {e}", file=sys.stderr)
         return jsonify({
             "success": False,
-            "error": str(e)
+            "error": f"Pipeline assistant error: {str(e)}"
         }), 500

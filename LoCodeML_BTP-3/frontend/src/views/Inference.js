@@ -189,58 +189,53 @@ function Inference() {
         setButtonLoading(true);
 
         const callMaster = async () => {
-
-            await axios.post(process.env.REACT_APP_RUN_INFERENCE_PIPELINE, {
-                nodes: nodes,
-                edges: edges
-            })
-                .then((response) => {
-                    console.log("Received response: ", typeof (response.data));
-                    console.log("Response: ", response.data);
-
-                    // const truncatedData = response.data.split('\n').join('\n');
-                    // setCsvData(response.data);
-                    // setOpen(true);
-                    // setButtonLoading(false);
-
-                    if (response.status === 201) {
-                        console.log("HAHAHAHAHAHAHAHA")
-                        setIsPipelinePaused(true);  // Pipeline is paused
-                        setButtonLoading(false);
-                    }
-
-                    if (response.status === 200) {
-                        const data = response.data;
-                        console.log("Response data:", data);  // Debug log
-
-                        if (typeof data === 'string') {
-                            // Handle direct CSV string data
-                            setCsvData(data);
-                        } else if ('objective' in data && data.results) {
-                            console.log("Objective:", data.objective);
-                            if (data.objective.toLowerCase() === 'imageclassification') {
-                                // Handle image classification results
-                                setCsvData(data.results);
-                            } else if (typeof data.results === 'string') {
-                                // Handle CSV string results for classification/regression
-                                setCsvData(data.results);
-                            } else {
-                                // Handle structured results by converting to CSV
-                                const csvString = convertResultsToCSV(data.results);
-                                setCsvData(csvString);
-                            }
-                        }
-                        
-                        setOpen(true);
-                        setPopupOpen(true);
-                        setButtonLoading(false);
-                    }
-                    // setFile(true)
-                })
-                .catch((error) => {
-                    console.log(error);
+            try {
+                const response = await axios.post(process.env.REACT_APP_RUN_INFERENCE_PIPELINE, {
+                    nodes: nodes,
+                    edges: edges
                 });
+
+                console.log("Received response: ", typeof (response.data));
+                console.log("Response: ", response.data);
+
+                if (response.status === 201) {
+                    setIsPipelinePaused(true);
+                    return;
+                }
+
+                if (response.status === 200) {
+                    const data = response.data;
+                    console.log("Response data:", data);
+
+                    if (typeof data === 'string') {
+                        setCsvData(data);
+                    } else if ('objective' in data && data.results) {
+                        console.log("Objective:", data.objective);
+                        if (data.objective.toLowerCase() === 'imageclassification') {
+                            setCsvData(data.results);
+                        } else if (typeof data.results === 'string') {
+                            setCsvData(data.results);
+                        } else {
+                            const csvString = convertResultsToCSV(data.results);
+                            setCsvData(csvString);
+                        }
+                    }
+
+                    setOpen(true);
+                    setPopupOpen(true);
+                }
+            } catch (error) {
+                const backendMessage = error?.response?.data?.error || error?.response?.data?.message || error.message;
+                console.error("Pipeline run failed:", backendMessage, error);
+                setPopupOpen(true);
+                setCsvData("");
+                setOpen(false);
+                window.alert(`Pipeline run failed: ${backendMessage}`);
+            } finally {
+                setButtonLoading(false);
+            }
         };
+
         callMaster();
     };
 

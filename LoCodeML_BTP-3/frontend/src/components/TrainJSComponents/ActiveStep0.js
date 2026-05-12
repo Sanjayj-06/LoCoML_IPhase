@@ -204,6 +204,9 @@ function ActiveStep0(props) {
                         <MenuItem value="sentiment" key="sent">
                           Sentiment Analysis
                         </MenuItem>,
+                        <MenuItem value="machineTranslation" key="mt">
+                          Machine Translation
+                        </MenuItem>,
                       ]}
                 </Select>
               </FormControl>

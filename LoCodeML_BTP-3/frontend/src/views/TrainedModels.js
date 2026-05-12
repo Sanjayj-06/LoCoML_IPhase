@@ -246,6 +246,7 @@ function TrainedModels() {
                             <option value="regression">Regression</option>
                             <option value="sentiment">Sentiment</option>
                             <option value="imageclassification">Image Classification</option>
+                            <option value="machinetranslation">Machine Translation</option>
                         </select>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', marginRight: '5px', marginBottom: "5px" }}>

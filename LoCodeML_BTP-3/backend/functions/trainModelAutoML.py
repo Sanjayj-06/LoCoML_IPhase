@@ -2,6 +2,7 @@ from ClassificationUtility import ClassificationUtility
 from RegressionUtility import RegressionUtility
 from ImageClassificationUtility import ImageClassificationUtility
 from Sentiment_new import SentimentAnalysisUtility_1
+from MachineTranslationUtility import MachineTranslationUtility
 import pandas as pd
 import datetime
 import pickle
@@ -49,12 +50,32 @@ def trainModelAutoML(dataset_id, model_name, target_column, metric_mode, metric_
             metric_type = ImageClassificationMetrics.Accuracy.value
 
     ic(objective.lower())
+    # If objective is machine translation, ensure dataframe and source/target columns are prepared
+    if objective.lower() == 'machinetranslation':
+        dataset_path = os.getenv('PROJECT_PATH') + 'Datasets/'+dataset_id+'.csv'
+        df = pd.read_csv(dataset_path)
+        # target_column may be provided as "src_col,target_col" or a single column name.
+        if isinstance(target_column, str) and ',' in target_column:
+            cols = [c.strip() for c in target_column.split(',') if c.strip()]
+        elif len(df.columns) == 2:
+            cols = list(df.columns[:2])
+        elif isinstance(target_column, str) and target_column in df.columns:
+            other_cols = [c for c in df.columns if c != target_column]
+            cols = [other_cols[0], target_column] if other_cols else list(df.columns[:2])
+        else:
+            # fallback to first two columns if unsure
+            cols = list(df.columns[:2]) if len(df.columns) >= 2 else [df.columns[0]]
+
+        # pass source,target pair (list) as target_column to MachineTranslationUtility
+        target_column = cols
     if objective.lower() == 'classification':
         clf_util = ClassificationUtility(df, target_column, 'AutoML', None, metric_type)
     elif objective.lower() == 'regression':
         clf_util = RegressionUtility(df, target_column, 'AutoML', None, metric_type)
     elif objective.lower() == 'sentiment':
         clf_util = SentimentAnalysisUtility_1(df, target_column, 'AutoML', None, metric_type)
+    elif objective.lower() == 'machinetranslation':
+        clf_util = MachineTranslationUtility(df, target_column, 'AutoML', None, metric_type)
     elif objective.lower() == 'imageclassification':
         clf_util = ImageClassificationUtility(dataset, target_column, 'AutoML', None, metric_type, dataset_id=dataset_id)
 
@@ -73,6 +94,11 @@ def trainModelAutoML(dataset_id, model_name, target_column, metric_mode, metric_
         print("DEBUG: Sentiment - Best Model Name:", best_model_name, file=sys.stderr)
         model_parameters = clf_util.get_params()
         print("DEBUG: Sentiment - Model Parameters:", model_parameters, file=sys.stderr)
+    elif objective.lower() == 'machinetranslation':
+        best_model_name = clf_util.getBestModel(metric_type)['translation_model']
+        print("DEBUG: Machine Translation - Best Model Name:", best_model_name, file=sys.stderr)
+        model_parameters = clf_util.get_params()
+        print("DEBUG: Machine Translation - Model Parameters:", model_parameters, file=sys.stderr)
     elif objective.lower() == 'imageclassification':
         print("DEBUG: Starting Image Classification model extraction", file=sys.stderr)
         best_model = clf_util.getBestModel(metric_type)
@@ -87,7 +113,7 @@ def trainModelAutoML(dataset_id, model_name, target_column, metric_mode, metric_
     
     metrics = []
     for metric in results.columns:
-        if metric == 'Classifier' or metric.lower() == 'regressor' or metric.lower() == 'sentiment_model' or metric.lower() == 'classifier':
+        if metric in ['Classifier', 'regressor', 'sentiment_model', 'classifier', 'translation_model', 'Model', 'Language_Pair']:
             continue
         metrics.append({
             'metric_name' : metric,
@@ -144,6 +170,13 @@ def trainModelAutoML(dataset_id, model_name, target_column, metric_mode, metric_
         cm = clf_util.get_confusion_matrix()
         graph_data = {
             'confusion_matrix' : cm,
+        }
+    elif objective.lower() == 'machinetranslation':
+        print("Status: Generating Machine Translation Metrics", file=sys.stderr)
+        sample_preds = clf_util.get_sample_predictions()
+        graph_data = {
+            'sample_predictions': sample_preds,
+            'model_info': 'Pre-trained Hugging Face Transformers'
         }
     elif objective.lower() == 'imageclassification':
         print("DEBUG: Starting Image Classification visualization generation", file=sys.stderr)
@@ -255,7 +288,28 @@ isUpdate = sys.argv[10] # not needed in automl
 
 ic(dataset_id, model_name, model_type, hyperparameters, target_column, metric_mode, metric_type, objective, model_id)
 
-details = trainModelAutoML(dataset_id, model_name, target_column, metric_mode, metric_type, objective)
-details_path = os.getenv('PROJECT_PATH') + 'Usage/details.pkl'
-with open(details_path, 'wb') as f:
-    pickle.dump(details, f)
+try:
+    details = trainModelAutoML(dataset_id, model_name, target_column, metric_mode, metric_type, objective)
+    details_path = os.getenv('PROJECT_PATH') + 'Usage/details.pkl'
+    with open(details_path, 'wb') as f:
+        pickle.dump(details, f)
+except Exception as e:
+    # Log full traceback to stderr so callers capture it
+    import traceback
+    tb = traceback.format_exc()
+    print(f"[ERROR] Unhandled exception during training: {str(e)}", file=sys.stderr)
+    print(tb, file=sys.stderr)
+    # Write a failure details file so trainModel API can surface a clearer error
+    details_path = os.getenv('PROJECT_PATH') + 'Usage/details.pkl'
+    error_details = {
+        'success': False,
+        'error': str(e),
+        'traceback': tb
+    }
+    try:
+        with open(details_path, 'wb') as f:
+            pickle.dump(error_details, f)
+    except Exception as w:
+        print(f"[ERROR] Failed to write failure details.pkl: {str(w)}", file=sys.stderr)
+    # exit with non-zero to indicate failure
+    sys.exit(1)
